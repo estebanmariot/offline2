@@ -3,13 +3,13 @@ const API_URL = 'https://x8ki-letl-twmt.n7.xano.io/api:NbNF6YZg/todolist';
 
 // Installation
 self.addEventListener('install', (event) => {
-  console.log('📦 Service Worker installé');
+  console.log('Service Worker installé');
   self.skipWaiting();
 });
 
 // Activation
 self.addEventListener('activate', (event) => {
-  console.log('✅ Service Worker activé');
+  console.log('Service Worker activé');
   self.clients.claim();
 });
 
@@ -33,20 +33,20 @@ async function handleFetch(request) {
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
-      console.log('✅ Réponse mise en cache:', request.url);
+      console.log('Réponse mise en cache:', request.url);
     }
     
     return response;
     
   } catch (error) {
     // Offline: retourner le cache
-    console.log('⚠️ Offline, utiliser le cache');
+    console.log('Offline, utiliser le cache');
     
     const cache = await caches.open(CACHE_NAME);
     const cachedResponse = await cache.match(request);
     
     if (cachedResponse) {
-      console.log('📦 Cache utilisé:', request.url);
+      console.log('Cache utilisé:', request.url);
       return cachedResponse;
     }
     
