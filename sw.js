@@ -1,49 +1,59 @@
-const CACHE_NAME = 'offline-cache-v1';
+const CACHE_NAME = 'todolist-cache-v1';
+const API_URL = 'https://x8ki-letl-twmt.n7.xano.io/api:NbNF6YZg/todolist';
 
-// Installation du SW
+// Installation
 self.addEventListener('install', (event) => {
   console.log('📦 Service Worker installé');
   self.skipWaiting();
 });
 
-// Activation du SW
+// Activation
 self.addEventListener('activate', (event) => {
   console.log('✅ Service Worker activé');
   self.clients.claim();
 });
 
-// Interception des requêtes
+// Interception des fetch
 self.addEventListener('fetch', (event) => {
-  // Seulement les requêtes POST/GET vers les APIs
-  if (event.request.method === 'POST' || event.request.method === 'GET') {
-    event.respondWith(sw(event.request));
+  const { request } = event;
+  const url = new URL(request.url);
+  
+  // Seulement pour les requêtes vers Xano
+  if (url.origin === 'https://x8ki-letl-twmt.n7.xano.io') {
+    event.respondWith(handleFetch(request));
   }
 });
 
-async function sw(request) {
+async function handleFetch(request) {
   try {
-    // Essayer de récupérer depuis le réseau
-    const response = await fetch(request);
+    // Essayer le fetch normal (online)
+    const response = await fetch(request.clone());
     
     // Si succès, mettre en cache
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
+      console.log('✅ Réponse mise en cache:', request.url);
     }
     
     return response;
+    
   } catch (error) {
-    // Si erreur réseau (offline), retourner du cache
+    // Offline: retourner le cache
     console.log('⚠️ Offline, utiliser le cache');
     
     const cache = await caches.open(CACHE_NAME);
     const cachedResponse = await cache.match(request);
     
     if (cachedResponse) {
+      console.log('📦 Cache utilisé:', request.url);
       return cachedResponse;
     }
     
-    // Pas de cache disponible
-    return new Response('Offline', { status: 503 });
+    // Pas de cache, retourner erreur
+    return new Response(
+      JSON.stringify({ error: 'Offline - pas de cache' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
