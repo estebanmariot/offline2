@@ -1,14 +1,3 @@
-const PREFIX = 'V1';
-
-self.addEventListener('install', () => {
-    self.skipWaiting();
-    console.log(`${PREFIX} Install`)
-});
-
-self.addEventListener('activate', () => {
-    console.log(`${PREFIX} Active`)
-});
-
 self.addEventListener("fetch", (event) => {
     console.log(`Fetching : ${event.request.url}, Mode : ${event.request.mode}`);
 
