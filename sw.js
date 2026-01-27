@@ -20,7 +20,7 @@ self.addEventListener("fetch", (event) => {
                 }
                 return await fetch(event.request);
             } catch(e) {
-                return new Response("TODOLIST");
+                return new Response("/second");
             }
         })());
     }
