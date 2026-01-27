@@ -1,11 +1,5 @@
 {
-  "name": "Todo List Sync",
-  "short_name": "TodoSync",
-  "description": "Application de gestion de tâches avec synchronisation offline-first",
-  "start_url": "/second",
-  "scope": "/second",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "categories": ["productivity"],
-  "prefer_related_applications": false
+    "name": "test todo",
+    "start_url": "/?source=pwa",
+    "display": "fullscreen"
 }
