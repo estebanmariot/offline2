@@ -16,7 +16,8 @@ self.addEventListener('install', event => {
 
 // Activate
 self.addEventListener('activate', event => {
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());  // Force contrôle IMMÉDIAT
+  console.log('🚀 SW contrôle pages');
 });
 
 // Fetch : stratégie CACHE FIRST
