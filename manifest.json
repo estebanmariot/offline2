@@ -6,7 +6,6 @@
   "scope": "/second",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#2180()",
   "categories": ["productivity"],
   "prefer_related_applications": false
 }
