@@ -1,34 +1,24 @@
-const PREFIX = "V2";
+self.addEventListener('fetch', (event) => {
+  console.log(`Fetching : ${event.request.url}, Mode : ${event.request.mode}`);
 
-self.addEventListener("install", (event) => {
-    event.waitUntil((async () => {
-        const cache = await caches.open(PREFIX);
-        cache.add("/second");
-    }));
-    console.log(`${PREFIX} Install`);
-});
+  if (event.request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const preloadResponse = await event.preloadResponse;
+        if (preloadResponse) {
+          return preloadResponse;
+        }
 
-self.addEventListener("activate", () => {
-    clients.claim();
-    console.log(`${PREFIX} Active`);
-})
-
-
-self.addEventListener("fetch", (event) => {
-    console.log(`Fetching : ${event.request.url}, Mode : ${event.request.mode}`);
-
-    if (event.request.mode === 'navigate'){
-        event.respondWith((async () => {
-            try{
-                const preloadResponse = await event.preloadResponse
-                if (preloadResponse) {
-                    return preloadResponse;
-                }
-
-                return await fetch(event.request);
-            } catch(e) {
-                return new Response("TODOLIST");
-            }
-        }))
-    }
+        // Essaye le réseau d'abord
+        const networkResponse = await fetch(event.request);
+        return networkResponse;
+      } catch (e) {
+        console.log('Offline, on renvoie la page offline depuis le cache');
+        const cache = await caches.open(CACHE_NAME);
+        const cachedResponse = await cache.match(OFFLINE_URL);
+          
+        return cachedResponse || new Response('TODOLIST OFFLINE');
+      }
+    })());
+  }
 });
