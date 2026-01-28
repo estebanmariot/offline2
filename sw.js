@@ -37,8 +37,8 @@ self.addEventListener('fetch', (event) => {
     url.includes('.woff2') ||
     url.includes('.png') ||
     url.includes('.jpg') ||
-    url.includes('.js') ||
-    url.includes('manifest.json')
+    url.includes('.js') ||       // ← NOUVEAU !
+    url.includes('manifest.json') // ← NOUVEAU !
   ) {
     event.respondWith(
       caches.open(CACHE_NAME)
@@ -63,68 +63,5 @@ self.addEventListener('fetch', (event) => {
             })
         )
     );
-  }
-});
-
-// ✨ NOUVEAU : Message listener pour charger les todos depuis IndexedDB
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'GET_TODOS') {
-    console.log('📨 SW: Message reçu GET_TODOS');
-    
-    const request = indexedDB.open('toDoList', 2);
-    
-    request.onsuccess = (e) => {
-      const db = e.target.result;
-      
-      // Vérifier que l'object store existe
-      if (!db.objectStoreNames.contains('todolist')) {
-        console.warn('⚠️ SW: Object store todolist inexistant');
-        event.ports[0].postMessage({
-          type: 'TODOS_LOADED',
-          todos: []
-        });
-        db.close();
-        return;
-      }
-      
-      try {
-        const transaction = db.transaction(['todolist'], 'readonly');
-        const store = transaction.objectStore('todolist');
-        const getAll = store.getAll();
-        
-        getAll.onsuccess = () => {
-          console.log('📤 SW: Envoi de', getAll.result.length, 'todos');
-          event.ports[0].postMessage({
-            type: 'TODOS_LOADED',
-            todos: getAll.result
-          });
-          db.close();
-        };
-        
-        getAll.onerror = () => {
-          console.error('❌ SW: Erreur lecture IndexedDB');
-          event.ports[0].postMessage({
-            type: 'TODOS_LOADED',
-            todos: []
-          });
-          db.close();
-        };
-      } catch(err) {
-        console.error('❌ SW: Erreur transaction:', err);
-        event.ports[0].postMessage({
-          type: 'TODOS_LOADED',
-          todos: []
-        });
-        db.close();
-      }
-    };
-    
-    request.onerror = () => {
-      console.error('❌ SW: Erreur ouverture DB');
-      event.ports[0].postMessage({
-        type: 'TODOS_LOADED',
-        todos: []
-      });
-    };
   }
 });
