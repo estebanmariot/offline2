@@ -1,42 +1,29 @@
 const CACHE_NAME = 'todolist-cache-v1';
-const OFFLINE_URL = '/second';
+const OFFLINE_PAGE = '/second'; // ta page TODO
 
 self.addEventListener('install', (event) => {
-  console.log('SW install');
+  console.log('🔧 Install');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([OFFLINE_URL]);
-    })
+    caches.open(CACHE_NAME).then(cache => 
+      cache.addAll([OFFLINE_PAGE])
+    )
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('SW activate');
+  console.log('🚀 Activate');
   event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
-  console.log(`Fetching : ${event.request.url}, Mode : ${event.request.mode}`);
-
+  console.log(`📡 ${event.request.url}`);
+  
   if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const preloadResponse = await event.preloadResponse;
-        if (preloadResponse) {
-          return preloadResponse;
-        }
-
-        // Essaye le réseau d'abord
-        const networkResponse = await fetch(event.request);
-        return networkResponse;
-      } catch (e) {
-        console.log('Offline, on renvoie la page offline depuis le cache');
-        const cache = await caches.open(CACHE_NAME);
-        const cachedResponse = await cache.match(OFFLINE_URL);
-          
-        return cachedResponse || new Response('TODOLIST OFFLINE');
-      }
-    })());
+    event.respondWith(
+      caches.match(OFFLINE_PAGE).then(cached => {
+        return cached || fetch(event.request).catch(() => cached);
+      })
+    );
   }
 });
