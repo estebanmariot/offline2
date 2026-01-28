@@ -1,3 +1,21 @@
+const CACHE_NAME = 'todolist-cache-v1';
+const OFFLINE_URL = '/second';
+
+self.addEventListener('install', (event) => {
+  console.log('SW install');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll([OFFLINE_URL]);
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('SW activate');
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('fetch', (event) => {
   console.log(`Fetching : ${event.request.url}, Mode : ${event.request.mode}`);
 
