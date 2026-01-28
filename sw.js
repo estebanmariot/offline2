@@ -17,9 +17,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  console.log(`📡 ${event.request.url}`);
+  const url = event.request.url;
+  console.log(`📡 ${url}`);
   
-  // 1️⃣ Pages HTML (navigate)
+  // 1️⃣ Pages HTML
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache => 
@@ -30,25 +31,36 @@ self.addEventListener('fetch', (event) => {
     );
   }
   
-  // 2️⃣ CSS + Fonts + Images (cache si possible)
+  // 2️⃣ CSS + Fonts + Images + JS (TOUT)
   else if (
-    event.request.url.includes('.css') ||
-    event.request.url.includes('.woff2') ||
-    event.request.url.includes('.png') ||
-    event.request.url.includes('.jpg')
+    url.includes('.css') ||
+    url.includes('.woff2') ||
+    url.includes('.png') ||
+    url.includes('.jpg') ||
+    url.includes('.js') ||       // ← NOUVEAU !
+    url.includes('manifest.json') // ← NOUVEAU !
   ) {
     event.respondWith(
       caches.open(CACHE_NAME)
         .then(cache => 
           cache.match(event.request)
-            .then(cached => 
-              cached || fetch(event.request).then(response => {
-                // Copie fraîche = cache aussi !
+            .then(cached => {
+              if (cached) {
+                console.log(`✅ Cache hit: ${url}`);
+                return cached;
+              }
+              
+              // Fetch + cache
+              return fetch(event.request).then(response => {
+                console.log(`💾 Caching: ${url}`);
                 cache.put(event.request, response.clone());
                 return response;
-              })
-            )
-            .catch(() => cached || new Response('Asset offline'))
+              });
+            })
+            .catch(() => {
+              console.log(`❌ Offline, no cache: ${url}`);
+              return new Response('Asset offline', {status: 503});
+            })
         )
     );
   }
