@@ -1,8 +1,8 @@
-geconst CACHE_NAME = 'todolist-v2';
+const CACHE_NAME = 'todolist-v2';
 const OFFLINE_PAGE = [
   '/second',
-  '/',
-  '/-copy'
+  '/HomePage',
+  '/HomePage-connexion'
   ];
 
 self.addEventListener('install', (event) => {
