@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
   console.log('🔧 Install');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => 
-      cache.addAll([OFFLINE_PAGE])
+      cache.addAll(OFFLINE_PAGE)
     )
   );
   self.skipWaiting();
