@@ -28,7 +28,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache => 
-        cache.match(OFFLINE_PAGE)
+        cache.match(event.request)
           .then(cached => cached || fetch(event.request))
           .catch(() => cached)
       )
