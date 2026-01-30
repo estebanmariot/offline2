@@ -1,5 +1,9 @@
 const CACHE_NAME = 'todolist-v1';
-const OFFLINE_PAGE = '/second';
+const OFFLINE_PAGE = [
+  '/second',
+  '/',
+  '/-copy'
+  ];
 
 self.addEventListener('install', (event) => {
   console.log('🔧 Install');
