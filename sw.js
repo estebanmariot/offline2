@@ -1,4 +1,4 @@
-geconst CACHE_NAME = 'todolist-v1';
+geconst CACHE_NAME = 'todolist-v2';
 const OFFLINE_PAGE = [
   '/second',
   '/HomePage',
