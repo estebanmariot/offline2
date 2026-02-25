@@ -4,7 +4,7 @@ const OFFLINE_PAGE = [
   ];
 
 self.addEventListener('install', (event) => {
-  console.log('🔧 Install');
+  console.log('Install');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => 
       cache.addAll(OFFLINE_PAGE)
@@ -14,15 +14,15 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Activate');
+  console.log('Activate');
   event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
-  console.log(`📡 ${url}`);
+  console.log(`${url}`);
   
-  // 1️⃣ Pages HTML
+  // Pages HTML
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache => 
@@ -33,7 +33,7 @@ self.addEventListener('fetch', (event) => {
     );
   }
   
-  // 2️⃣ CSS + Fonts + Images + JS (TOUT)
+  // CSS + Fonts + Images + JS (TOUT)
   else if (
     url.includes('.css') ||
     url.includes('.woff2') ||
@@ -48,19 +48,19 @@ self.addEventListener('fetch', (event) => {
           cache.match(event.request)
             .then(cached => {
               if (cached) {
-                console.log(`✅ Cache hit: ${url}`);
+                console.log(`Cache hit: ${url}`);
                 return cached;
               }
               
               // Fetch + cache
               return fetch(event.request).then(response => {
-                console.log(`💾 Caching: ${url}`);
+                console.log(`Caching: ${url}`);
                 cache.put(event.request, response.clone());
                 return response;
               });
             })
             .catch(() => {
-              console.log(`❌ Offline, no cache: ${url}`);
+              console.log(`Offline, no cache: ${url}`);
               return new Response('Asset offline', {status: 503});
             })
         )
