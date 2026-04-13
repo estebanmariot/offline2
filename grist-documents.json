@@ -1,0 +1,25 @@
+{
+  "team_site_id": 7,
+  "documents": [
+    {
+      "module": "crm_entreprise",
+      "doc_id": "bMaMjnvaP17SyL3BftmFW1",
+      "description": "CRM interne — remplacement Salesforce"
+    },
+    {
+      "module": "module_rh",
+      "doc_id": "gZnXTd9NcUgSYtsWyrZJcz",
+      "description": "RH — Entretiens"
+    },
+    {
+      "module": "ticketing",
+      "doc_id": "gZnXTd9NcUgSYtsWyrZJcz",
+      "description": "Ticketing interne"
+    },
+    {
+      "module": "cra_boond",
+      "doc_id": "gZnXTd9NcUgSYtsWyrZJcz",
+      "description": "Mon Espace Collab — CRA Boond"
+    }
+  ]
+}

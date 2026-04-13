@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet"/>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{height:100vh;overflow:hidden;background:#F4F5F7;font-family:'Inter',sans-serif;font-size:13px;color:#1A1A1A}
+.app{display:flex;flex-direction:column;height:100vh}
+.hdr{background:#fff;border-bottom:1px solid #E5E7EB;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hdr-title{font-family:'Press Start 2P';font-size:9px;color:#43D19B;letter-spacing:.05em}
+.hdr-user{font-size:11px;color:#9CA3AF}
+.nav{display:flex;border-bottom:2px solid #E5E7EB;background:#fff;flex-shrink:0;padding:0 16px}
+.nav-tab{padding:9px 14px;font-size:12px;font-weight:500;color:#6B7280;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;transition:color .15s,border-color .15s}
+.nav-tab:hover{color:#43D19B}
+.nav-tab.active{color:#43D19B;border-bottom-color:#43D19B}
+.body{flex:1;overflow:hidden;display:flex;position:relative}
+.list-pane{flex:1;overflow-y:auto;padding:14px 16px;min-width:0}
+.list-pane.with-drawer{flex:0 0 55%}
+.drawer{width:45%;background:#fff;border-left:1px solid #E5E7EB;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.drawer-hdr{padding:10px 14px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.drawer-title{font-size:12px;font-weight:600;color:#1A1A1A}
+.drawer-body{flex:1;overflow-y:auto;padding:14px}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-input{border:1px solid #E5E7EB;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'Inter';outline:none;width:200px}
+.search-input:focus{border-color:#43D19B}
+.filter-select{border:1px solid #E5E7EB;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'Inter';outline:none;background:#fff;cursor:pointer}
+.filter-select:focus{border-color:#43D19B}
+.spacer{flex:1}
+.count-label{font-size:11px;color:#6B7280}
+.tbl-wrap{background:#fff;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{padding:8px 12px;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;text-align:left;background:#F9FAFB;border-bottom:1px solid #E5E7EB}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:hover{background:#F0FDF9}
+tbody tr.selected{background:#F0FDF9;border-left:3px solid #43D19B}
+tbody td{padding:9px 12px;font-size:12px;border-bottom:1px solid #F3F4F6;color:#1A1A1A}
+tbody tr:last-child td{border-bottom:none}
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 0}
+.pg-btn{border:1px solid #E5E7EB;border-radius:4px;padding:4px 10px;font-size:12px;background:#fff;cursor:pointer;color:#6B7280}
+.pg-btn:hover:not(:disabled){border-color:#43D19B;color:#43D19B}
+.pg-btn:disabled{opacity:.4;cursor:not-allowed}
+.pg-info{font-size:12px;color:#6B7280}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600}
+.badge-none{background:#F3F4F6;color:#6B7280}
+.badge-blue{background:#DBEAFE;color:#1E3A8A}
+.badge-orange{background:#FEF3C7;color:#92400E}
+.badge-green{background:#D1FAE5;color:#065F46}
+.badge-red{background:#FEE2E2;color:#991B1B}
+.btn{padding:7px 14px;border-radius:4px;font-family:'Press Start 2P';font-size:8px;cursor:pointer;border:2px solid #000;box-shadow:3px 3px 0 #000;transition:all .08s;background:#fff;color:#1A1A1A}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.btn-primary{background:#43D19B;color:#fff}
+.btn-danger{background:#EF4444;color:#fff}
+.btn-sm{padding:5px 10px;font-size:7px}
+.btn-close{background:none;border:none;box-shadow:none;font-size:16px;cursor:pointer;color:#6B7280;padding:2px 6px}
+.btn-close:active{transform:none}
+.btn-close:hover{color:#1A1A1A}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.form-input{border:1px solid #D1D5DB;border-radius:6px;padding:7px 9px;font-family:'Inter';font-size:12px;width:100%;outline:none}
+.form-input:focus{border-color:#43D19B}
+.form-select{border:1px solid #D1D5DB;border-radius:6px;padding:7px 9px;font-family:'Inter';font-size:12px;width:100%;outline:none;background:#fff}
+.form-select:focus{border-color:#43D19B}
+.form-textarea{border:1px solid #D1D5DB;border-radius:6px;padding:7px 9px;font-family:'Inter';font-size:12px;width:100%;resize:vertical;min-height:72px;outline:none}
+.form-textarea:focus{border-color:#43D19B}
+.field-row{display:flex;padding:6px 0;border-bottom:1px solid #F3F4F6}
+.field-row:last-child{border-bottom:none}
+.field-label{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;width:130px;flex-shrink:0;padding-top:1px}
+.field-value{font-size:12px;color:#1A1A1A;flex:1}
+.field-empty{color:#9CA3AF;font-style:italic}
+.section-title{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px}
+.related-item{padding:8px 10px;border:1px solid #E5E7EB;border-radius:6px;margin-bottom:6px;font-size:12px}
+.view-actions{display:flex;gap:8px;padding:10px 0 0}
+.readonly-notice{margin-top:12px;padding:8px 10px;background:#F9FAFB;border-radius:6px;font-size:11px;color:#9CA3AF}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:8px;border:1px solid #E5E7EB;padding:24px;max-width:380px;width:90%;box-shadow:0 20px 40px rgba(0,0,0,.15)}
+.modal-title{font-family:'Press Start 2P';font-size:9px;color:#EF4444;margin-bottom:12px}
+.modal-msg{font-size:13px;color:#1A1A1A;margin-bottom:20px;line-height:1.5}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.toast{position:fixed;bottom:16px;right:16px;padding:9px 14px;border-radius:6px;font-size:12px;font-weight:600;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.toast-ok{background:#43D19B;color:#fff}
+.toast-err{background:#EF4444;color:#fff}
+.loading{font-family:'Press Start 2P';font-size:10px;color:#6B7280;padding:60px;text-align:center}
+.blink{animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.empty{text-align:center;padding:40px;color:#9CA3AF;font-size:13px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.kpi-card{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:12px 14px}
+.kpi-label{font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.kpi-value{font-family:'Press Start 2P';font-size:11px;color:#1A1A1A}
+.kpi-sub{font-size:10px;color:#9CA3AF;margin-top:3px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.chart-card{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:12px 14px}
+.chart-card-title{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.period-sel{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.period-btn{padding:4px 12px;border-radius:999px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #E5E7EB;background:#fff;color:#6B7280;transition:all .15s}
+.period-btn.active{background:#43D19B;color:#fff;border-color:#43D19B}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+const toRows = data => {
+  if (!data) return [];
+  const keys = Object.keys(data).filter(k => k !== 'id');
+  const ids = data.id || [];
+  return ids.map((id, i) =>
+    Object.fromEntries([['id', id], ...keys.map(k => [k, data[k][i]])])
+  );
+};
+
+const fmtCurrency = v => v != null ? new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v) : null;
+const fmtDate = v => {
+  if (!v) return null;
+  try { return new Date(typeof v==='number'?v*1000:v).toLocaleDateString('fr-FR'); } catch { return v; }
+};
+const fmtDatetime = v => {
+  if (!v) return null;
+  try {
+    const d = new Date(typeof v==='number'?v*1000:v);
+    return d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  } catch { return v; }
+};
+
+const STATUTS = ['None','Qualification','Découverte','Solution','Proposition','Négociation','Closing','Commit','Closed Won','Closed Lost'];
+const SECTEURS = ['IT','Finance','Industrie','Santé','Retail','Éducation','Autre'];
+const TAILLES  = ['TPE','PME','ETI','Grand compte'];
+const TYPES_ACT= ['Appel','Email','RDV','Relance','Autre'];
+const DUREES   = ['3 mois','6 mois','12 mois','>12 mois'];
+const PAGE_SIZE = 20;
+
+const statutBadge = s => {
+  const cls = {
+    'None':'badge-none',
+    'Qualification':'badge-blue','Découverte':'badge-blue','Solution':'badge-blue',
+    'Proposition':'badge-orange','Négociation':'badge-orange','Closing':'badge-orange',
+    'Commit':'badge-green','Closed Won':'badge-green',
+    'Closed Lost':'badge-red',
+  }[s]||'badge-none';
+  return <span className={`badge ${cls}`}>{s||'—'}</span>;
+};
+
+// ─── App ───────────────────────────────────────────────────────────────────
+function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [utilisateurs, setUtilisateurs] = useState([]);
+  const [comptes, setComptes]     = useState([]);
+  const [contacts, setContacts]   = useState([]);
+  const [opps, setOpps]           = useState([]);
+  const [activites, setActivites] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState('comptes');
+  const [drawer, setDrawer]       = useState(null);
+  const [modal, setModal]         = useState(null);
+  const [toast, setToast]         = useState(null);
+  const toastTimer = useRef(null);
+
+  const showToast = (type, msg) => {
+    setToast({type, msg});
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(()=>setToast(null), 3000);
+  };
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (typeof grist !== 'undefined') {
+        const fetchSafe = async (name) => {
+          try { return await grist.docApi.fetchTable(name); }
+          catch(e) { console.error(`fetchTable(${name}) failed:`, e); return null; }
+        };
+        const [u, c, ct, o, a] = await Promise.all([
+          fetchSafe('Utilisateurs'),
+          fetchSafe('Comptes'),
+          fetchSafe('Contacts'),
+          fetchSafe('Opportunites'),
+          fetchSafe('Activites'),
+        ]);
+        if (u)  setUtilisateurs(toRows(u));
+        if (c)  setComptes(toRows(c));
+        if (ct) setContacts(toRows(ct));
+        if (o)  setOpps(toRows(o));
+        if (a)  setActivites(toRows(a));
+      } else {
+        // Mode dev — colonnes en minuscules, références par id
+        setUtilisateurs([
+          {id:1,email:'paul@croco.fr',nom:'Paul Dupont',role:'commercial',user_id:1},
+          {id:2,email:'lea@croco.fr', nom:'Léa Martin', role:'commercial',user_id:2},
+          {id:3,email:'admin@croco.fr',nom:'Admin',     role:'admin',     user_id:3},
+        ]);
+        setComptes([
+          {id:1,nom:'Acme Corp',secteur:'IT',taille:'PME',ville:'Paris',ca_potentiel:120000,notes:''},
+          {id:2,nom:'Biotech SA',secteur:'Santé',taille:'ETI',ville:'Lyon',ca_potentiel:80000,notes:''},
+          {id:3,nom:'Finance Plus',secteur:'Finance',taille:'Grand compte',ville:'Paris',ca_potentiel:250000,notes:''},
+        ]);
+        setContacts([
+          {id:1,prenom:'Alice',nom:'Dupont',fonction:'DSI',email:'alice@acme.com',telephone:'0601020304',compte:1,notes:''},
+          {id:2,prenom:'Bob',  nom:'Martin',fonction:'DG', email:'bob@biotech.fr',telephone:'0702030405',compte:2,notes:''},
+        ]);
+        setOpps([
+          {id:1,titre:'Projet ERP',compte:1,responsable:1,statut:'Proposition',amount:60000,montant_n:60000,montant_n1:0,duree_mission:'12 mois',date_ouverture:1700000000,raison_perte:'',notes:''},
+          {id:2,titre:'Mission RH', compte:2,responsable:1,statut:'Qualification',amount:30000,montant_n:30000,montant_n1:0,duree_mission:'6 mois',date_ouverture:1710000000,raison_perte:'',notes:''},
+          {id:3,titre:'Audit SI',   compte:3,responsable:2,statut:'Closed Won',amount:90000,montant_n:45000,montant_n1:45000,duree_mission:'>12 mois',date_ouverture:1705000000,raison_perte:'',notes:'Signé'},
+        ]);
+        setActivites([
+          {id:1,date:1710500000,type:'Appel',commentaire:'Premier contact',opportunite:1,auteur:1},
+          {id:2,date:1711000000,type:'RDV',  commentaire:'Présentation solution',opportunite:1,auteur:1},
+        ]);
+      }
+    } catch(e) { showToast('err','Erreur chargement : '+e.message); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof grist !== 'undefined') {
+      grist.ready({ requiredAccess: 'full', allowSelectBy: true });
+      // onRecords se déclenche automatiquement au chargement (table source = summary Utilisateurs)
+      grist.onRecords(records => {
+        if (records?.length > 0) {
+          const moi = records[0];
+          setCurrentUser({ user_id: moi.user_id, email: moi.email, nom: moi.nom, role: moi.role });
+        } else {
+          // Aucun enregistrement : utilisateur absent de la table Utilisateurs
+          setCurrentUser({ user_id: null, email: '', nom: 'Inconnu', role: 'commercial' });
+        }
+        loadAll();
+      });
+      // Sécurité : si onRecords ne se déclenche pas dans les 3s, forcer le chargement
+      const timeout = setTimeout(() => {
+        setLoading(prev => {
+          if (prev) { loadAll(); }
+          return prev;
+        });
+      }, 3000);
+      return () => clearTimeout(timeout);
+    } else {
+      setCurrentUser({user_id:1, email:'paul@croco.fr', nom:'Paul Dupont', role:'commercial'});
+      loadAll();
+    }
+  }, []);
+
+  // Helpers de résolution
+  const getNomCompte  = id => comptes.find(c=>c.id===id)?.nom||'—';
+  const getNomUser    = id => utilisateurs.find(u=>u.id===id)?.nom||'—';
+  // Comparaison par user_id (id Grist de la ligne Utilisateurs)
+  const peutEditer    = opp => currentUser?.role==='admin' || opp.responsable===currentUser?.user_id;
+
+  const handleDelete = (entity, record) => setModal({entity, record});
+
+  const confirmDelete = async () => {
+    const {entity, record} = modal;
+    const tbl = {comptes:'Comptes',contacts:'Contacts',opportunites:'Opportunites',activites:'Activites'}[entity];
+    try {
+      await grist.docApi.applyUserActions([['RemoveRecord', tbl, record.id]]);
+      setModal(null); setDrawer(null);
+      await loadAll();
+      showToast('ok','Supprimé');
+    } catch(e) { setModal(null); showToast('err','Erreur : '+e.message); }
+  };
+
+  const handleSave = async (entity, rowId, fields) => {
+    const tbl = {comptes:'Comptes',contacts:'Contacts',opportunites:'Opportunites',activites:'Activites'}[entity];
+    // Validation Closed Lost
+    if (entity==='opportunites' && fields.statut==='Closed Lost' && !fields.raison_perte?.trim()) {
+      return showToast('err','Raison de perte obligatoire pour Closed Lost');
+    }
+    try {
+      if (rowId) await grist.docApi.applyUserActions([['UpdateRecord', tbl, rowId, fields]]);
+      else       await grist.docApi.applyUserActions([['AddRecord',    tbl, null,  fields]]);
+      await loadAll();
+      setDrawer(null);
+      showToast('ok', rowId?'Modifications enregistrées':'Créé avec succès');
+    } catch(e) { showToast('err','Erreur : '+e.message); }
+  };
+
+  const tabs = [{key:'comptes',label:'Comptes'},{key:'contacts',label:'Contacts'},{key:'opportunites',label:'Opportunités'},{key:'dashboard',label:'Dashboard'}];
+
+  return (
+    <div className="app">
+      <div className="hdr">
+        <span className="hdr-title">CRM</span>
+        <span className="hdr-user">{currentUser?.nom||''}</span>
+      </div>
+      <div className="nav">
+        {tabs.map(t=>(
+          <div key={t.key} className={`nav-tab${tab===t.key?' active':''}`} onClick={()=>{setTab(t.key);setDrawer(null);}}>{t.label}</div>
+        ))}
+      </div>
+      <div className="body">
+        {loading ? <div className="loading">CHARGEMENT<span className="blink">▮</span></div> : (
+          <>
+            <div className={`list-pane${drawer?' with-drawer':''}`}>
+              {tab==='comptes'      && <ComptesList      comptes={comptes} contacts={contacts} opps={opps} onSelect={r=>setDrawer({mode:'view',entity:'comptes',record:r})} selected={drawer?.record} onNew={()=>setDrawer({mode:'new',entity:'comptes',record:null})}/>}
+              {tab==='contacts'     && <ContactsList     contacts={contacts} comptes={comptes} onSelect={r=>setDrawer({mode:'view',entity:'contacts',record:r})} selected={drawer?.record} onNew={()=>setDrawer({mode:'new',entity:'contacts',record:null})} getNomCompte={getNomCompte}/>}
+              {tab==='opportunites' && <OppsList         opps={opps} comptes={comptes} utilisateurs={utilisateurs} onSelect={r=>setDrawer({mode:'view',entity:'opportunites',record:r})} selected={drawer?.record} onNew={()=>setDrawer({mode:'new',entity:'opportunites',record:null})} getNomCompte={getNomCompte} getNomUser={getNomUser}/>}
+              {tab==='dashboard'    && <Dashboard opps={opps} comptes={comptes}/>}
+            </div>
+            {drawer && (
+              <div className="drawer">
+                <div className="drawer-hdr">
+                  <span className="drawer-title">{{comptes:{new:'Nouveau compte',view:'Compte',edit:'Compte'},contacts:{new:'Nouveau contact',view:'Contact',edit:'Contact'},opportunites:{new:'Nouvelle opportunité',view:'Opportunité',edit:'Opportunité'}}[drawer.entity]?.[drawer.mode]||''}</span>
+                  <button className="btn-close" onClick={()=>setDrawer(null)}>✕</button>
+                </div>
+                <div className="drawer-body">
+                  {drawer.mode==='view' && drawer.entity==='comptes'      && <CompteView      record={drawer.record} contacts={contacts} opps={opps} onEdit={()=>setDrawer({...drawer,mode:'edit'})} onDelete={()=>handleDelete('comptes',drawer.record)} getNomCompte={getNomCompte}/>}
+                  {drawer.mode==='view' && drawer.entity==='contacts'     && <ContactView     record={drawer.record} onEdit={()=>setDrawer({...drawer,mode:'edit'})} onDelete={()=>handleDelete('contacts',drawer.record)} getNomCompte={getNomCompte}/>}
+                  {drawer.mode==='view' && drawer.entity==='opportunites' && <OppView         record={drawer.record} activites={activites} onEdit={()=>setDrawer({...drawer,mode:'edit'})} onDelete={()=>handleDelete('opportunites',drawer.record)} getNomCompte={getNomCompte} getNomUser={getNomUser} peutEditer={peutEditer}/>}
+                  {(drawer.mode==='edit'||drawer.mode==='new') && drawer.entity==='comptes'      && <CompteForm      record={drawer.record} onSave={(id,f)=>handleSave('comptes',id,f)}      onCancel={()=>setDrawer(null)}/>}
+                  {(drawer.mode==='edit'||drawer.mode==='new') && drawer.entity==='contacts'     && <ContactForm     record={drawer.record} comptes={comptes} onSave={(id,f)=>handleSave('contacts',id,f)}     onCancel={()=>setDrawer(null)}/>}
+                  {(drawer.mode==='edit'||drawer.mode==='new') && drawer.entity==='opportunites' && <OppForm         record={drawer.record} comptes={comptes} utilisateurs={utilisateurs} currentUser={currentUser} onSave={(id,f)=>handleSave('opportunites',id,f)} onCancel={()=>setDrawer(null)}/>}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-title">CONFIRMER</div>
+            <div className="modal-msg">Supprimer <strong>{modal.record.nom||modal.record.titre||(modal.record.prenom+' '+modal.record.nom)||'cet élément'}</strong> ?<br/>Cette action est irréversible.</div>
+            <div className="modal-actions">
+              <button className="btn btn-sm" onClick={()=>setModal(null)}>Annuler</button>
+              <button className="btn btn-sm btn-danger" onClick={confirmDelete}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+    </div>
+  );
+}
+
+// ─── Pagination ────────────────────────────────────────────────────────────
+function Pagination({page,total,onChange}) {
+  if (total<=1) return null;
+  return (
+    <div className="pagination">
+      <button className="pg-btn" disabled={page===1} onClick={()=>onChange(page-1)}>‹</button>
+      <span className="pg-info">Page {page} / {total}</span>
+      <button className="pg-btn" disabled={page===total} onClick={()=>onChange(page+1)}>›</button>
+    </div>
+  );
+}
+
+// ─── Comptes List ──────────────────────────────────────────────────────────
+function ComptesList({comptes,contacts,opps,onSelect,selected,onNew}) {
+  const [search,setSearch]=useState('');
+  const [filtreSecteur,setFiltreSecteur]=useState('');
+  const [page,setPage]=useState(1);
+  const filtered=useMemo(()=>comptes.filter(c=>
+    (!search||c.nom?.toLowerCase().includes(search.toLowerCase()))&&
+    (!filtreSecteur||c.secteur===filtreSecteur)
+  ),[comptes,search,filtreSecteur]);
+  const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  const paged=filtered.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+  useEffect(()=>setPage(1),[search,filtreSecteur]);
+  return (<>
+    <div className="toolbar">
+      <input className="search-input" placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      <select className="filter-select" value={filtreSecteur} onChange={e=>setFiltreSecteur(e.target.value)}>
+        <option value="">Tous les secteurs</option>{SECTEURS.map(s=><option key={s}>{s}</option>)}
+      </select>
+      <span className="spacer"/><span className="count-label">{filtered.length} compte{filtered.length!==1?'s':''}</span>
+      <button className="btn btn-sm btn-primary" onClick={onNew}>+ Nouveau</button>
+    </div>
+    <div className="tbl-wrap"><table>
+      <thead><tr><th>Nom</th><th>Secteur</th><th>Taille</th><th>Ville</th><th>Contacts</th><th>Opps</th><th>CA potentiel</th></tr></thead>
+      <tbody>
+        {paged.length===0&&<tr><td colSpan={7}><div className="empty">Aucun compte</div></td></tr>}
+        {paged.map(c=>(
+          <tr key={c.id} className={selected?.id===c.id?'selected':''} onClick={()=>onSelect(c)}>
+            <td><strong>{c.nom}</strong></td>
+            <td>{c.secteur||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{c.taille||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{c.ville||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td><span className="badge badge-none">{contacts.filter(ct=>ct.compte===c.id).length}</span></td>
+            <td><span className="badge badge-none">{opps.filter(o=>o.compte===c.id).length}</span></td>
+            <td>{c.ca_potentiel?fmtCurrency(c.ca_potentiel):<span style={{color:'#9CA3AF'}}>—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+    <Pagination page={page} total={total} onChange={setPage}/>
+  </>);
+}
+
+// ─── Contacts List ─────────────────────────────────────────────────────────
+function ContactsList({contacts,comptes,onSelect,selected,onNew,getNomCompte}) {
+  const [search,setSearch]=useState('');
+  const [filtreCompte,setFiltreCompte]=useState('');
+  const [page,setPage]=useState(1);
+  const filtered=useMemo(()=>contacts.filter(c=>
+    (!search||(c.prenom+' '+c.nom).toLowerCase().includes(search.toLowerCase())||c.email?.toLowerCase().includes(search.toLowerCase()))&&
+    (!filtreCompte||String(c.compte)===filtreCompte)
+  ),[contacts,search,filtreCompte]);
+  const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  const paged=filtered.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+  useEffect(()=>setPage(1),[search,filtreCompte]);
+  return (<>
+    <div className="toolbar">
+      <input className="search-input" placeholder="Nom, email…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      <select className="filter-select" value={filtreCompte} onChange={e=>setFiltreCompte(e.target.value)}>
+        <option value="">Tous les comptes</option>{comptes.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}
+      </select>
+      <span className="spacer"/><span className="count-label">{filtered.length} contact{filtered.length!==1?'s':''}</span>
+      <button className="btn btn-sm btn-primary" onClick={onNew}>+ Nouveau</button>
+    </div>
+    <div className="tbl-wrap"><table>
+      <thead><tr><th>Nom</th><th>Fonction</th><th>Email</th><th>Téléphone</th><th>Compte</th></tr></thead>
+      <tbody>
+        {paged.length===0&&<tr><td colSpan={5}><div className="empty">Aucun contact</div></td></tr>}
+        {paged.map(c=>(
+          <tr key={c.id} className={selected?.id===c.id?'selected':''} onClick={()=>onSelect(c)}>
+            <td><strong>{c.prenom} {c.nom}</strong></td>
+            <td>{c.fonction||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{c.email||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{c.telephone||<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{getNomCompte(c.compte)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+    <Pagination page={page} total={total} onChange={setPage}/>
+  </>);
+}
+
+// ─── Opps List ─────────────────────────────────────────────────────────────
+function OppsList({opps,comptes,utilisateurs,onSelect,selected,onNew,getNomCompte,getNomUser}) {
+  const [search,setSearch]=useState('');
+  const [filtreStatut,setFiltreStatut]=useState('');
+  const [filtreResp,setFiltreResp]=useState('');
+  const [page,setPage]=useState(1);
+  const responsables=useMemo(()=>[...new Set(opps.map(o=>o.responsable).filter(Boolean))].map(id=>({id,nom:getNomUser(id)})),[opps,utilisateurs]);
+  const filtered=useMemo(()=>opps.filter(o=>
+    (!search||o.titre?.toLowerCase().includes(search.toLowerCase()))&&
+    (!filtreStatut||o.statut===filtreStatut)&&
+    (!filtreResp||String(o.responsable)===filtreResp)
+  ),[opps,search,filtreStatut,filtreResp]);
+  const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  const paged=filtered.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+  useEffect(()=>setPage(1),[search,filtreStatut,filtreResp]);
+  return (<>
+    <div className="toolbar">
+      <input className="search-input" placeholder="Titre…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      <select className="filter-select" value={filtreStatut} onChange={e=>setFiltreStatut(e.target.value)}>
+        <option value="">Tous les statuts</option>{STATUTS.map(s=><option key={s}>{s}</option>)}
+      </select>
+      <select className="filter-select" value={filtreResp} onChange={e=>setFiltreResp(e.target.value)}>
+        <option value="">Tous les responsables</option>{responsables.map(r=><option key={r.id} value={r.id}>{r.nom}</option>)}
+      </select>
+      <span className="spacer"/><span className="count-label">{filtered.length} opp{filtered.length!==1?'s':''}</span>
+      <button className="btn btn-sm btn-primary" onClick={onNew}>+ Nouveau</button>
+    </div>
+    <div className="tbl-wrap"><table>
+      <thead><tr><th>Titre</th><th>Compte</th><th>Statut</th><th>Responsable</th><th>Montant</th><th>Clôture</th></tr></thead>
+      <tbody>
+        {paged.length===0&&<tr><td colSpan={6}><div className="empty">Aucune opportunité</div></td></tr>}
+        {paged.map(o=>(
+          <tr key={o.id} className={selected?.id===o.id?'selected':''} onClick={()=>onSelect(o)}>
+            <td><strong>{o.titre}</strong></td>
+            <td>{getNomCompte(o.compte)}</td>
+            <td>{statutBadge(o.statut)}</td>
+            <td style={{fontSize:11,color:'#6B7280'}}>{getNomUser(o.responsable)}</td>
+            <td>{o.amount?fmtCurrency(o.amount):<span style={{color:'#9CA3AF'}}>—</span>}</td>
+            <td>{o.date_cloture?fmtDate(o.date_cloture):<span style={{color:'#9CA3AF'}}>—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+    <Pagination page={page} total={total} onChange={setPage}/>
+  </>);
+}
+
+// ─── Vue Compte ────────────────────────────────────────────────────────────
+function CompteView({record,contacts,opps,onEdit,onDelete,getNomCompte}) {
+  const ctContacts=contacts.filter(c=>c.compte===record.id);
+  const ctOpps=opps.filter(o=>o.compte===record.id);
+  return (<>
+    {[['Nom',record.nom],['Secteur',record.secteur],['Taille',record.taille],['Adresse',record.adresse],['Ville',record.ville],['Code postal',record.code_postal],['CA potentiel',fmtCurrency(record.ca_potentiel)],['Notes',record.notes]].map(([l,v])=>(
+      <div key={l} className="field-row"><span className="field-label">{l}</span><span className={`field-value${!v?' field-empty':''}`}>{v||'—'}</span></div>
+    ))}
+    {ctContacts.length>0&&<><div className="section-title">Contacts ({ctContacts.length})</div>{ctContacts.map(c=><div key={c.id} className="related-item">{c.prenom} {c.nom}{c.fonction?` · ${c.fonction}`:''}</div>)}</>}
+    {ctOpps.length>0&&<><div className="section-title">Opportunités ({ctOpps.length})</div>{ctOpps.map(o=><div key={o.id} className="related-item" style={{display:'flex',justifyContent:'space-between'}}><span>{o.titre}</span>{statutBadge(o.statut)}</div>)}</>}
+    <div className="view-actions">
+      <button className="btn btn-sm btn-primary" onClick={onEdit}>Modifier</button>
+      <button className="btn btn-sm btn-danger" onClick={onDelete}>Supprimer</button>
+    </div>
+  </>);
+}
+
+// ─── Vue Contact ───────────────────────────────────────────────────────────
+function ContactView({record,onEdit,onDelete,getNomCompte}) {
+  return (<>
+    {[['Prénom',record.prenom],['Nom',record.nom],['Fonction',record.fonction],['Email',record.email],['Téléphone',record.telephone],['Compte',getNomCompte(record.compte)],['Notes',record.notes]].map(([l,v])=>(
+      <div key={l} className="field-row"><span className="field-label">{l}</span><span className={`field-value${!v?' field-empty':''}`}>{v||'—'}</span></div>
+    ))}
+    <div className="view-actions">
+      <button className="btn btn-sm btn-primary" onClick={onEdit}>Modifier</button>
+      <button className="btn btn-sm btn-danger" onClick={onDelete}>Supprimer</button>
+    </div>
+  </>);
+}
+
+// ─── Vue Opportunité ───────────────────────────────────────────────────────
+function OppView({record,activites,onEdit,onDelete,getNomCompte,getNomUser,peutEditer}) {
+  const acts=activites.filter(a=>a.opportunite===record.id).sort((a,b)=>b.date-a.date);
+  const canEdit=peutEditer(record);
+  return (<>
+    <div className="field-row"><span className="field-label">Titre</span><span className="field-value">{record.titre}</span></div>
+    <div className="field-row"><span className="field-label">Compte</span><span className="field-value">{getNomCompte(record.compte)}</span></div>
+    <div className="field-row"><span className="field-label">Responsable</span><span className="field-value">{getNomUser(record.responsable)}</span></div>
+    <div className="field-row"><span className="field-label">Statut</span><span className="field-value">{statutBadge(record.statut)}</span></div>
+    <div className="field-row"><span className="field-label">Montant</span><span className={`field-value${!record.amount?' field-empty':''}`}>{fmtCurrency(record.amount)||'—'}</span></div>
+    <div className="field-row"><span className="field-label">Montant N</span><span className={`field-value${!record.montant_n?' field-empty':''}`}>{fmtCurrency(record.montant_n)||'—'}</span></div>
+    <div className="field-row"><span className="field-label">Montant N+1</span><span className={`field-value${!record.montant_n1?' field-empty':''}`}>{fmtCurrency(record.montant_n1)||'—'}</span></div>
+    <div className="field-row"><span className="field-label">Durée</span><span className={`field-value${!record.duree_mission?' field-empty':''}`}>{record.duree_mission||'—'}</span></div>
+    <div className="field-row"><span className="field-label">Ouverture</span><span className="field-value">{fmtDate(record.date_ouverture)||'—'}</span></div>
+    <div className="field-row"><span className="field-label">Clôture prévue</span><span className={`field-value${!record.date_cloture?' field-empty':''}`}>{fmtDate(record.date_cloture)||'—'}</span></div>
+    {record.statut==='Closed Lost'&&<div className="field-row"><span className="field-label">Raison perte</span><span className={`field-value${!record.raison_perte?' field-empty':''}`}>{record.raison_perte||'Non renseignée'}</span></div>}
+    <div className="field-row"><span className="field-label">Notes</span><span className={`field-value${!record.notes?' field-empty':''}`} style={{whiteSpace:'pre-wrap'}}>{record.notes||'—'}</span></div>
+    {acts.length>0&&<>
+      <div className="section-title">Historique ({acts.length})</div>
+      {acts.map(a=>(
+        <div key={a.id} className="related-item">
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+            <span className="badge badge-none">{a.type}</span>
+            <span style={{fontSize:11,color:'#9CA3AF'}}>{fmtDatetime(a.date)}</span>
+          </div>
+          {a.commentaire&&<div style={{fontSize:12,color:'#444441',marginTop:4}}>{a.commentaire}</div>}
+        </div>
+      ))}
+    </>}
+    {canEdit ? (
+      <div className="view-actions">
+        <button className="btn btn-sm btn-primary" onClick={onEdit}>Modifier</button>
+        <button className="btn btn-sm btn-danger" onClick={onDelete}>Supprimer</button>
+      </div>
+    ) : <div className="readonly-notice">Lecture seule — vous n'êtes pas responsable de cette opportunité</div>}
+  </>);
+}
+
+// ─── Formulaire Compte ─────────────────────────────────────────────────────
+function CompteForm({record,onSave,onCancel}) {
+  const [f,setF]=useState({nom:record?.nom||'',secteur:record?.secteur||'',taille:record?.taille||'',adresse:record?.adresse||'',ville:record?.ville||'',code_postal:record?.code_postal||'',ca_potentiel:record?.ca_potentiel||'',notes:record?.notes||''});
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const submit=()=>{
+    if(!f.nom.trim())return alert('Le nom est obligatoire');
+    onSave(record?.id||null,{...f,ca_potentiel:f.ca_potentiel?Number(f.ca_potentiel):null});
+  };
+  return (<>
+    <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={f.nom} onChange={e=>set('nom',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Secteur</label>
+      <select className="form-select" value={f.secteur} onChange={e=>set('secteur',e.target.value)}><option value="">—</option>{SECTEURS.map(s=><option key={s}>{s}</option>)}</select>
+    </div>
+    <div className="form-group"><label className="form-label">Taille</label>
+      <select className="form-select" value={f.taille} onChange={e=>set('taille',e.target.value)}><option value="">—</option>{TAILLES.map(s=><option key={s}>{s}</option>)}</select>
+    </div>
+    <div className="form-group"><label className="form-label">Adresse</label><input className="form-input" value={f.adresse} onChange={e=>set('adresse',e.target.value)}/></div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      <div className="form-group"><label className="form-label">Ville</label><input className="form-input" value={f.ville} onChange={e=>set('ville',e.target.value)}/></div>
+      <div className="form-group"><label className="form-label">Code postal</label><input className="form-input" value={f.code_postal} onChange={e=>set('code_postal',e.target.value)}/></div>
+    </div>
+    <div className="form-group"><label className="form-label">CA potentiel (€)</label><input className="form-input" type="number" value={f.ca_potentiel} onChange={e=>set('ca_potentiel',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" value={f.notes} onChange={e=>set('notes',e.target.value)}/></div>
+    <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:8}}>
+      <button className="btn btn-sm" onClick={onCancel}>Annuler</button>
+      <button className="btn btn-sm btn-primary" onClick={submit}>{record?'Enregistrer':'Créer'}</button>
+    </div>
+  </>);
+}
+
+// ─── Formulaire Contact ────────────────────────────────────────────────────
+function ContactForm({record,comptes,onSave,onCancel}) {
+  const [f,setF]=useState({prenom:record?.prenom||'',nom:record?.nom||'',fonction:record?.fonction||'',email:record?.email||'',telephone:record?.telephone||'',compte:record?.compte||'',notes:record?.notes||''});
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const submit=()=>{
+    if(!f.prenom.trim()||!f.nom.trim())return alert('Prénom et nom obligatoires');
+    if(!f.compte)return alert('Le compte est obligatoire');
+    onSave(record?.id||null,{...f,compte:Number(f.compte)});
+  };
+  return (<>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      <div className="form-group"><label className="form-label">Prénom *</label><input className="form-input" value={f.prenom} onChange={e=>set('prenom',e.target.value)}/></div>
+      <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={f.nom} onChange={e=>set('nom',e.target.value)}/></div>
+    </div>
+    <div className="form-group"><label className="form-label">Fonction</label><input className="form-input" value={f.fonction} onChange={e=>set('fonction',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={f.email} onChange={e=>set('email',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Téléphone</label><input className="form-input" value={f.telephone} onChange={e=>set('telephone',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Compte *</label>
+      <select className="form-select" value={f.compte} onChange={e=>set('compte',e.target.value)}><option value="">— Sélectionner —</option>{comptes.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}</select>
+    </div>
+    <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" value={f.notes} onChange={e=>set('notes',e.target.value)}/></div>
+    <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:8}}>
+      <button className="btn btn-sm" onClick={onCancel}>Annuler</button>
+      <button className="btn btn-sm btn-primary" onClick={submit}>{record?'Enregistrer':'Créer'}</button>
+    </div>
+  </>);
+}
+
+// ─── Formulaire Opportunité ────────────────────────────────────────────────
+function OppForm({record,comptes,utilisateurs,currentUser,onSave,onCancel}) {
+  const [f,setF]=useState({
+    titre:record?.titre||'', compte:record?.compte||'', responsable:record?.responsable||currentUser?.user_id||'',
+    statut:record?.statut||'None', amount:record?.amount||'',
+    montant_n:record?.montant_n||'', montant_n1:record?.montant_n1||'',
+    duree_mission:record?.duree_mission||'', date_cloture:record?.date_cloture||'',
+    raison_perte:record?.raison_perte||'', notes:record?.notes||'',
+  });
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const submit=()=>{
+    if(!f.titre.trim())return alert('Le titre est obligatoire');
+    if(!f.compte)return alert('Le compte est obligatoire');
+    if(!f.responsable)return alert('Le responsable est obligatoire');
+    if(f.statut==='Closed Lost'&&!f.raison_perte.trim())return alert('Raison de perte obligatoire pour Closed Lost');
+    onSave(record?.id||null,{
+      titre:f.titre, compte:Number(f.compte), responsable:Number(f.responsable),
+      statut:f.statut,
+      amount:f.amount?Number(f.amount):null,
+      montant_n:f.montant_n?Number(f.montant_n):null,
+      montant_n1:f.montant_n1?Number(f.montant_n1):null,
+      duree_mission:f.duree_mission||null,
+      date_cloture:f.date_cloture||null,
+      raison_perte:f.raison_perte||null,
+      notes:f.notes||null,
+    });
+  };
+  return (<>
+    <div className="form-group"><label className="form-label">Titre *</label><input className="form-input" value={f.titre} onChange={e=>set('titre',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Compte *</label>
+      <select className="form-select" value={f.compte} onChange={e=>set('compte',e.target.value)}><option value="">— Sélectionner —</option>{comptes.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}</select>
+    </div>
+    <div className="form-group"><label className="form-label">Responsable *</label>
+      <select className="form-select" value={f.responsable} onChange={e=>set('responsable',e.target.value)}>
+        <option value="">— Sélectionner —</option>{utilisateurs.map(u=><option key={u.id} value={u.id}>{u.nom}</option>)}
+      </select>
+    </div>
+    <div className="form-group"><label className="form-label">Statut</label>
+      <select className="form-select" value={f.statut} onChange={e=>set('statut',e.target.value)}>{STATUTS.map(s=><option key={s}>{s}</option>)}</select>
+    </div>
+    {f.statut==='Closed Lost'&&(
+      <div className="form-group"><label className="form-label" style={{color:'#EF4444'}}>Raison de perte *</label><textarea className="form-textarea" value={f.raison_perte} onChange={e=>set('raison_perte',e.target.value)} placeholder="Expliquer pourquoi l'opportunité a été perdue…"/></div>
+    )}
+    <div className="form-group"><label className="form-label">Montant global (€)</label><input className="form-input" type="number" value={f.amount} onChange={e=>set('amount',e.target.value)}/></div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      <div className="form-group"><label className="form-label">Montant N (€)</label><input className="form-input" type="number" value={f.montant_n} onChange={e=>set('montant_n',e.target.value)}/></div>
+      <div className="form-group"><label className="form-label">Montant N+1 (€)</label><input className="form-input" type="number" value={f.montant_n1} onChange={e=>set('montant_n1',e.target.value)}/></div>
+    </div>
+    <div className="form-group"><label className="form-label">Durée mission</label>
+      <select className="form-select" value={f.duree_mission} onChange={e=>set('duree_mission',e.target.value)}><option value="">—</option>{DUREES.map(d=><option key={d}>{d}</option>)}</select>
+    </div>
+    <div className="form-group"><label className="form-label">Date clôture prévue</label><input className="form-input" type="date" value={f.date_cloture||''} onChange={e=>set('date_cloture',e.target.value)}/></div>
+    <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" value={f.notes} onChange={e=>set('notes',e.target.value)}/></div>
+    <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:8}}>
+      <button className="btn btn-sm" onClick={onCancel}>Annuler</button>
+      <button className="btn btn-sm btn-primary" onClick={submit}>{record?'Enregistrer':'Créer'}</button>
+    </div>
+  </>);
+}
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────
+function Dashboard({opps,comptes}) {
+  const [period,setPeriod]=useState('all');
+  const donutRef=useRef(null), barRef=useRef(null);
+  const donutChart=useRef(null), barChart=useRef(null);
+
+  const filterByPeriod=useCallback(list=>{
+    const now=new Date(), y=now.getFullYear(), m=now.getMonth(), q=Math.floor(m/3);
+    return list.filter(o=>{
+      if(period==='all')return true;
+      const d=o.date_ouverture?new Date(typeof o.date_ouverture==='number'?o.date_ouverture*1000:o.date_ouverture):null;
+      if(!d)return false;
+      if(period==='month')return d>=new Date(y,m,1);
+      if(period==='quarter')return d>=new Date(y,q*3,1);
+      if(period==='year')return d>=new Date(y,0,1);
+      return true;
+    });
+  },[period]);
+
+  const filtered=useMemo(()=>filterByPeriod(opps),[opps,filterByPeriod]);
+  const opened=useMemo(()=>filtered.filter(o=>!['Closed Won','Closed Lost'].includes(o.statut)),[filtered]);
+
+  const kpis=useMemo(()=>{
+    const cw=filtered.filter(o=>o.statut==='Closed Won').length;
+    const cl=filtered.filter(o=>o.statut==='Closed Lost').length;
+    return {
+      nbComptes:comptes.length, nbOpps:opened.length,
+      pipeline:opened.reduce((s,o)=>s+(o.amount||0),0),
+      pipelineN:opened.reduce((s,o)=>s+(o.montant_n||0),0),
+      pipelineN1:opened.reduce((s,o)=>s+(o.montant_n1||0),0),
+      taux:(cw+cl)>0?Math.round(cw/(cw+cl)*100):null,
+    };
+  },[filtered,opened,comptes]);
+
+  useEffect(()=>{
+    if(!donutRef.current)return;
+    const grouped={};
+    STATUTS.forEach(s=>{grouped[s]=filtered.filter(o=>o.statut===s).length;});
+    const labels=STATUTS.filter(s=>grouped[s]>0);
+    const data=labels.map(s=>grouped[s]);
+    const colors=labels.map(s=>({'None':'#F3F4F6','Qualification':'#BFDBFE','Découverte':'#93C5FD','Solution':'#60A5FA','Proposition':'#FDE68A','Négociation':'#FCD34D','Closing':'#FBBF24','Commit':'#6EE7B7','Closed Won':'#43D19B','Closed Lost':'#FCA5A5'}[s]||'#E5E7EB'));
+    if(donutChart.current)donutChart.current.destroy();
+    donutChart.current=new Chart(donutRef.current,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11,family:'Inter'},boxWidth:12}}}}});
+    return()=>{if(donutChart.current)donutChart.current.destroy();};
+  },[filtered]);
+
+  useEffect(()=>{
+    if(!barRef.current)return;
+    const byCompte={};
+    opened.forEach(o=>{const nom=comptes.find(c=>c.id===o.compte)?.nom||'Inconnu';byCompte[nom]=(byCompte[nom]||0)+(o.amount||0);});
+    const sorted=Object.entries(byCompte).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(barChart.current)barChart.current.destroy();
+    barChart.current=new Chart(barRef.current,{type:'bar',data:{labels:sorted.map(([n])=>n),datasets:[{label:'Pipeline (€)',data:sorted.map(([,v])=>v),backgroundColor:'#43D19B',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10,family:'Inter'},callback:v=>new Intl.NumberFormat('fr-FR',{notation:'compact'}).format(v)}},y:{ticks:{font:{size:11,family:'Inter'}}}}}});
+    return()=>{if(barChart.current)barChart.current.destroy();};
+  },[opened,comptes]);
+
+  return (
+    <div style={{overflow:'auto',height:'100%',padding:'14px 16px'}}>
+      <div className="period-sel">
+        {[['all','Tout'],['month','Mois'],['quarter','Trimestre'],['year','Année']].map(([k,l])=>(
+          <button key={k} className={`period-btn${period===k?' active':''}`} onClick={()=>setPeriod(k)}>{l}</button>
+        ))}
+      </div>
+      <div className="kpi-grid">
+        <div className="kpi-card"><div className="kpi-label">Comptes</div><div className="kpi-value">{kpis.nbComptes}</div></div>
+        <div className="kpi-card"><div className="kpi-label">Opps ouvertes</div><div className="kpi-value">{kpis.nbOpps}</div></div>
+        <div className="kpi-card"><div className="kpi-label">Pipeline total</div><div className="kpi-value" style={{fontSize:9}}>{fmtCurrency(kpis.pipeline)}</div></div>
+        <div className="kpi-card"><div className="kpi-label">Pipeline N</div><div className="kpi-value" style={{fontSize:9}}>{fmtCurrency(kpis.pipelineN)}</div><div className="kpi-sub">N+1 : {fmtCurrency(kpis.pipelineN1)}</div></div>
+        <div className="kpi-card"><div className="kpi-label">Taux conversion</div><div className="kpi-value">{kpis.taux!==null?kpis.taux+'%':'—'}</div></div>
+      </div>
+      <div className="chart-row">
+        <div className="chart-card"><div className="chart-card-title">Répartition par statut</div><div style={{position:'relative',height:200}}><canvas ref={donutRef}/></div></div>
+        <div className="chart-card"><div className="chart-card-title">Top comptes (pipeline)</div><div style={{position:'relative',height:200}}><canvas ref={barRef}/></div></div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

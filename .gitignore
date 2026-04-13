@@ -1,0 +1,18 @@
+# Credentials et variables d'environnement — ne jamais commiter
+.env
+.env.local
+.env.*.local
+
+# Dépendances
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Output script schéma — contient des données Grist, ne pas commiter
+schema-output.json
+
+# OS
+.DS_Store
+Thumbs.db
