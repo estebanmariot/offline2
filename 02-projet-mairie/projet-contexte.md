@@ -36,11 +36,11 @@ Le portail détecte l'utilisateur connecté et lui affiche une interface personn
 | Composant | Outil | Rôle |
 |---|---|---|
 | **Base de données** | Grist | Source de vérité (Tables : Utilisateurs, Salles, RDV, Assos, Demandes...) |
-| **Interface globale** | Widget Grist (React) | Application SPA unique "Portail Mairie" hébergée dans un dashboard Grist. |
+| **Interface globale** | Widget Grist (SPA HTML/JS) | Application contenue dans une seule page (Single Page Application) utilisant HTML natif, Tailwind CSS (via CDN) et Vanilla JavaScript. |
 | **Formulaires externes** | Grist (Formulaires natifs) | Si des utilisateurs n'ont pas de compte Grist, on utilisera les vues formulaires publiques de Grist. |
 | **Génération PDF & IA** | Xano / API Externe | Xano servira de proxy pour appeler une IA (ex: Whisper pour l'audio des réunions) et générer des PDF complexes. |
 
-> **Règle d'or :** Tout ce qui concerne la base de données et les droits (RLS) reste nativement dans Grist. Le widget React ne fait que lire et écrire via `grist.docApi`.
+> **Règle d'or :** Tout ce qui concerne la base de données et les droits (RLS) reste nativement dans Grist. Le widget communique via `grist.docApi`. L'UI entière fonctionne sans framework frontend (pas de React/Vue), tout en un seul fichier (HTML/JS/CSS) pour faciliter l'intégration Grist.
 
 ---
 

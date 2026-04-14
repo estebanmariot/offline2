@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="fr" class="bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portail Mairie - Grist Widget</title>
+    
+    <!-- Grist Plugin API -->
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mairieBlue: '#0055A4', // Bleu République
+                        mairieRed: '#EF4135',  // Rouge République
+                        darkBlue: '#002855'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons: Premium icon set -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Base styles and Scrollbar for premium feel */
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Active nav item indicator */
+        .nav-item.active { background-color: rgba(255, 255, 255, 0.1); border-left: 4px solid #EF4135; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-800 relative">
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="login-screen" class="absolute inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="text-center mb-10">
+            <i class="ph-fill ph-buildings text-6xl text-mairieRed mb-4 inline-block"></i>
+            <h1 class="text-4xl font-bold text-darkBlue tracking-tight mb-2">Portail Interactif</h1>
+            <p class="text-slate-500 text-lg" id="login-status">Analyse de la BDD Grist en cours...</p>
+        </div>
+        <div id="login-users-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl w-full px-8 opacity-0 transition-opacity duration-500">
+            <!-- Cards loaded via JS -->
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-darkBlue text-white flex flex-col shadow-xl z-20 transition-all duration-300">
+        <!-- Logo Area -->
+        <div class="h-20 flex items-center px-6 border-b border-white/10 bg-gradient-to-r from-mairieBlue to-darkBlue">
+            <i class="ph-fill ph-buildings text-3xl text-mairieRed mr-3"></i>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-wide">PORTAIL</h1>
+                <p class="text-xs text-blue-200 font-medium tracking-widest uppercase">Mairie Centrale</p>
+            </div>
+        </div>
+
+        <!-- User Profile Area (Dynamic) -->
+        <div class="p-6 border-b border-white/10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg" id="ui-user-initial">JD</div>
+                <div class="overflow-hidden">
+                    <p class="font-semibold text-sm truncate" id="ui-user-name">Jean Dupont</p>
+                    <p class="text-xs text-blue-300 capitalize" id="ui-user-role">Citoyen</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" id="nav-menu">
+            <!-- Items generated via JS based on Role -->
+        </nav>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t border-white/10">
+            <button onclick="logout()" class="w-full flex items-center justify-center space-x-2 bg-mairieRed/20 hover:bg-mairieRed/40 text-red-200 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                <i class="ph ph-sign-out text-lg"></i><span>Déconnexion</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col relative overflow-hidden bg-slate-50">
+        
+        <!-- Top Header -->
+        <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 z-10 sticky top-0 shadow-sm">
+            <h2 class="text-2xl font-bold text-slate-800" id="ui-view-title">Tableau de bord</h2>
+            
+            <div class="flex items-center space-x-4">
+                <button class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                    <i class="ph ph-bell text-xl"></i>
+                </button>
+                <div class="px-4 py-2 bg-blue-50 text-mairieBlue text-sm font-semibold rounded-full border border-blue-100 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span> Connecté à Grist
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Views Container -->
+        <div class="flex-1 overflow-y-auto p-8" id="views-container">
+            
+            <!-- VUE : DASHBOARD -->
+            <section id="view-dashboard" class="app-view fade-in hidden">
+                <div id="dashboard-content">
+                    <!-- Généré dynamiquement sélon le rôle via renderDashboardView() -->
+                </div>
+            </section>
+
+            <!-- VUE : SALLES -->
+            <section id="view-salles" class="app-view fade-in hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700">Catalogue des Salles</h3>
+                    <input type="text" placeholder="Rechercher une salle..." class="px-4 py-2 border border-slate-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-mairieBlue/50">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="salles-grid">
+                    <!-- Salles generated by JS -->
+                    <div class="col-span-full py-10 text-center text-slate-400">
+                        <i class="ph ph-spinner-gap animate-spin text-4xl mb-2"></i>
+                        <p>Chargement des salles depuis Grist...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VUE : ASSOCIATIONS -->
+            <section id="view-assos" class="app-view fade-in hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-semibold text-slate-700">Registre des Associations</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-3 border-b border-slate-100">Nom de l'association</th>
+                                    <th class="px-6 py-3 border-b border-slate-100">Représentant</th>
+                                    <th class="px-6 py-3 border-b border-slate-100">Numéro RNA</th>
+                                    <th class="px-6 py-3 border-b border-slate-100" width="100">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assos-tbody" class="divide-y divide-slate-100">
+                                <!-- Données JS -->
+                                <tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Chargement...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VUE : RDV -->
+            <section id="view-rdv" class="app-view fade-in hidden">
+                <div class="grid gap-4 max-w-3xl" id="rdv-list">
+                    <!-- Données JS -->
+                </div>
+            </section>
+
+            <!-- VUE : GUICHET -->
+            <section id="view-guichet" class="app-view fade-in hidden">
+                <div class="grid gap-4 max-w-4xl" id="guichet-list">
+                    <!-- Données JS -->
+                </div>
+            </section>
+
+            <!-- VUE : REUNIONS -->
+            <section id="view-reunions" class="app-view fade-in hidden">
+                <div class="grid gap-4 max-w-4xl" id="reunions-list">
+                    <!-- Données JS -->
+                </div>
+            </section>
+            
+        </div>
+    </main>
+
+    <!-- TOAST ALERT -->
+    <div id="global-alert" class="fixed bottom-6 right-6 p-4 rounded-xl shadow-2xl z-50 transform transition-all duration-300 translate-y-24 opacity-0 flex items-start max-w-sm pointer-events-none">
+        <div class="mr-3 text-2xl" id="alert-icon"></div>
+        <div>
+            <h4 class="font-bold text-slate-800" id="alert-title">Titre</h4>
+            <p class="text-sm text-slate-600 mt-1" id="alert-desc">Description</p>
+        </div>
+    </div>
+
+    <!-- MODAL RÉSERVATION SALLE -->
+    <div id="booking-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-lg">Demande de réservation</h3>
+                <button onclick="closeBookingModal()" class="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="booking-form" onsubmit="submitBooking(event)" class="p-6">
+                <input type="hidden" id="booking-salle-target">
+                <div class="mb-6 flex items-center p-4 rounded-xl bg-blue-50/50 border border-blue-100">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-mairieBlue flex items-center justify-center text-xl mr-4"><i class="ph-fill ph-door"></i></div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Salle ciblée</p>
+                        <p class="font-bold text-slate-800" id="booking-salle-name">Nom Salle</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Début</label>
+                        <input type="datetime-local" id="booking-date-debut" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mairieBlue/50 text-slate-600 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Fin</label>
+                        <input type="datetime-local" id="booking-date-fin" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mairieBlue/50 text-slate-600 text-sm">
+                    </div>
+                </div>
+                
+                <div class="border-t border-slate-100 pt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeBookingModal()" class="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Annuler</button>
+                    <button type="submit" id="booking-submit-btn" class="px-6 py-2.5 rounded-xl font-semibold bg-mairieBlue text-white hover:bg-darkBlue transition-colors flex items-center justify-center shadow-md">
+                        Envoyer la demande
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CRÉATION TICKET GUICHET -->
+    <div id="ticket-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-lg">Nouvelle demande au guichet</h3>
+                <button onclick="closeTicketModal()" class="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="ticket-form" onsubmit="submitTicket(event)" class="p-6">
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Objet de la demande</label>
+                    <textarea id="ticket-desc" required rows="3" placeholder="Décrivez clairement votre demande ou l'incident..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mairieBlue/50 text-slate-600 text-sm resize-none"></textarea>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Niveau d'urgence</label>
+                    <select id="ticket-prio" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mairieBlue/50 text-slate-600 text-sm bg-white">
+                        <option value="Basse">Basse (Demande d'information, pas d'urgence)</option>
+                        <option value="Normale" selected>Normale (Délai de traitement standard)</option>
+                        <option value="Urgente">Urgente (Danger immédiat ou blocage critique)</option>
+                    </select>
+                </div>
+                
+                <div class="border-t border-slate-100 pt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeTicketModal()" class="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Annuler</button>
+                    <button type="submit" id="ticket-submit-btn" class="px-6 py-2.5 rounded-xl font-semibold bg-mairieRed text-white hover:bg-red-700 transition-colors flex items-center justify-center shadow-md">
+                        Envoyer le ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGIC APPLICATION -->
+    <script>
+        // --- 1. STATE & CONFIG ---
+        const AppState = {
+            currentUser: null, // Initialement nul avant la sélection
+            currentView: 'dashboard',
+            data: {
+                users: [],
+                salles: [],
+                assos: [],
+                rdv: [],
+                guichet: [],
+                reunions: [],
+                actions_reunions: []
+            }
+        };
+
+        const MENU_ITEMS = [
+            { id: 'dashboard', label: 'Tableau de bord', icon: 'ph-squares-four', roles: ['citoyen', 'association', 'agent'] },
+            { id: 'salles', label: 'Location de Salles', icon: 'ph-door', roles: ['citoyen', 'association', 'agent'] },
+            { id: 'assos', label: 'Espace Association', icon: 'ph-users-three', roles: ['association', 'agent'] },
+            { id: 'rdv', label: 'Rendez-vous', icon: 'ph-calendar-blank', roles: ['citoyen', 'association', 'agent'] },
+            { id: 'guichet', label: 'Guichet & Demandes', icon: 'ph-ticket', roles: ['citoyen', 'association', 'agent'] },
+            { id: 'reunions', label: 'Comptes Rendus', icon: 'ph-file-text', roles: ['agent'] }
+        ];
+
+        const VIEW_TITLES = {
+            'dashboard': 'Tableau de bord',
+            'salles': 'Location de Salles',
+            'assos': 'Suivi des Associations',
+            'rdv': 'Gestion des Rendez-vous',
+            'guichet': 'Guichet Unique - Demandes',
+            'reunions': 'Réunions et Comptes Rendus'
+        };
+
+        // --- 2. CORE FUNCTIONS ---
+
+        function initApp() {
+            // Initialisation unique au lancement
+            initGristConnection();
+        }
+
+        function renderLoginScreen() {
+            document.getElementById('login-status').innerText = 'Veuillez sélectionner un profil de test :';
+            const grid = document.getElementById('login-users-grid');
+            grid.classList.remove('opacity-0');
+            
+            if(!AppState.data.users || !AppState.data.users.length) {
+                grid.innerHTML = '<div class="col-span-full border border-red-200 bg-red-50 p-6 rounded-2xl text-red-600 text-center"><i class="ph ph-warning-circle text-4xl mb-2"></i><p class="font-bold">Aucun utilisateur trouvé.</p><p class="text-sm">Vérifiez que la table Grist s\'appelle bien "Utilisateurs".</p></div>';
+                return;
+            }
+
+            grid.innerHTML = AppState.data.users.map(u => {
+                const roleColor = u.Role === 'agent' ? 'bg-blue-100 text-blue-700 border-blue-200' : (u.Role === 'association' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-700 border-slate-200');
+                const roleIcon = u.Role === 'agent' ? 'ph-briefcase text-blue-500' : (u.Role === 'association' ? 'ph-users-three text-green-500' : 'ph-user text-slate-500');
+
+                return `
+                <button onclick="loginAs('${u.Email}')" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-left transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl transition-colors group-hover:bg-slate-100">
+                            <i class="ph-fill ${roleIcon}"></i>
+                        </div>
+                        <span class="inline-block px-3 py-1.5 text-[10px] font-bold uppercase rounded-xl border ${roleColor}">${u.Role}</span>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-800 mb-1 leading-tight">${u.Nom_Complet}</h3>
+                    <p class="text-sm text-slate-500 font-medium">${u.Email}</p>
+                </button>
+            `}).join('');
+        }
+
+        function loginAs(email) {
+            const user = AppState.data.users.find(u => u.Email === email);
+            if(!user) return;
+            
+            // Standardisation du rôle en minuscules (trim en prévention des erreurs d'espace Excel/Grist)
+            AppState.currentUser = { ...user, Role: String(user.Role).toLowerCase().trim() };
+            
+            // Masquer le panneau de connexion (fondu dynamique Tailwind)
+            const overlay = document.getElementById('login-screen');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            // Initialiser l'UI filtrée
+            renderSidebar();
+            renderProfile();
+            navigateTo('dashboard');
+        }
+
+        function logout() {
+            AppState.currentUser = null;
+            document.getElementById('login-screen').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('nav-menu').innerHTML = ''; // Purger la vue
+        }
+
+        function navigateTo(viewId) {
+            // Update State
+            AppState.currentView = viewId;
+
+            // Hide all views, show target
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`view-${viewId}`) || document.getElementById('view-placeholder');
+            targetView.classList.remove('hidden');
+
+            // Update UI Title
+            document.getElementById('ui-view-title').innerText = VIEW_TITLES[viewId] || 'Module inconnu';
+
+            // Update Sidebar active state
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'text-white'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.add('text-white/70'));
+            
+            const activeBtn = document.getElementById(`nav-${viewId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('active', 'text-white');
+                activeBtn.classList.remove('text-white/70');
+            }
+
+            // Trigger view-specific render
+            if(viewId === 'dashboard') renderDashboardView();
+            if(viewId === 'salles') renderSallesView();
+            if(viewId === 'assos') renderAssosView();
+            if(viewId === 'rdv') renderRdvView();
+            if(viewId === 'guichet') renderGuichetView();
+            if(viewId === 'reunions') renderReunionsView();
+        }
+
+        function renderSidebar() {
+            const navContainer = document.getElementById('nav-menu');
+            navContainer.innerHTML = '';
+
+            MENU_ITEMS.forEach(item => {
+                // Check if user role is allowed to see this menu
+                if(item.roles.includes(AppState.currentUser.Role)) {
+                    const btn = document.createElement('button');
+                    btn.id = `nav-${item.id}`;
+                    btn.className = `nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-white/70 hover:text-white hover:bg-white/5`;
+                    btn.onclick = () => navigateTo(item.id);
+                    btn.innerHTML = `<i class="ph ${item.icon} text-xl"></i><span>${item.label}</span>`;
+                    navContainer.appendChild(btn);
+                }
+            });
+        }
+
+        function renderProfile() {
+            if(!AppState.currentUser) return;
+            document.getElementById('ui-user-name').innerText = AppState.currentUser.Nom_Complet;
+            // Majuscule sur la première lettre pour l'esthétique
+            document.getElementById('ui-user-role').innerText = AppState.currentUser.Role.charAt(0).toUpperCase() + AppState.currentUser.Role.slice(1);
+            // Generate initials
+            const initials = AppState.currentUser.Nom_Complet.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+            document.getElementById('ui-user-initial').innerText = initials;
+        }
+
+        // --- 2.5 ACTIONS UTILISATEUR & MODALES ---
+
+        function showGlobalAlert(title, desc, type = 'success') {
+            const toast = document.getElementById('global-alert');
+            const icon = document.getElementById('alert-icon');
+            
+            if(type === 'success') {
+                toast.className = 'fixed bottom-6 right-6 p-4 rounded-xl shadow-2xl z-50 transform transition-all duration-300 flex items-start max-w-sm border border-green-200 bg-white translate-y-0 opacity-100';
+                icon.innerHTML = '<i class="ph-fill ph-check-circle text-green-500"></i>';
+            }
+            
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-desc').innerText = desc;
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+            }, 5000);
+        }
+
+        function openBookingModal(salleNom) {
+            // Un agent n'effectue pas de réservation pour lui-même depuis ce panel
+            if(AppState.currentUser.Role === 'agent') return; 
+            
+            document.getElementById('booking-salle-name').innerText = salleNom;
+            document.getElementById('booking-salle-target').value = salleNom;
+            
+            // Initialiser les dates (Aujourd'hui -> Demain)
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('booking-date-debut').value = now.toISOString().slice(0,16);
+            
+            const tomorrow = new Date(now);
+            tomorrow.setHours(tomorrow.getHours() + 4);
+            document.getElementById('booking-date-fin').value = tomorrow.toISOString().slice(0,16);
+            
+            document.getElementById('booking-modal').classList.remove('hidden');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
+            document.getElementById('booking-form').reset();
+        }
+
+        async function submitBooking(event) {
+            event.preventDefault();
+            const btn = document.getElementById('booking-submit-btn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="ph ph-spinner gap animate-spin mr-2"></i>Envoi...';
+            btn.disabled = true;
+
+            const salleNom = document.getElementById('booking-salle-target').value;
+            const rawDebut = document.getElementById('booking-date-debut').value;
+            const rawFin = document.getElementById('booking-date-fin').value;
+            
+            // Format Grist SQL-like fallback format (YYYY-MM-DD HH:MM)
+            const dateDebut = rawDebut.replace('T', ' ');
+            const dateFin = rawFin.replace('T', ' ');
+
+            try {
+                // Envoyer la demande d'ajout d'enregistrement à Grist
+                await grist.docApi.applyUserActions([
+                    ['AddRecord', 'Reservations', null, {
+                        Salle_Ref: salleNom,
+                        Demandeur_Ref: AppState.currentUser.Nom_Complet,
+                        Date_Debut: dateDebut,
+                        Date_Fin: dateFin,
+                        Statut: 'En_attente'
+                    }]
+                ]);
+
+                closeBookingModal();
+                showGlobalAlert('Demande envoyée !', `Votre demande pour ${salleNom} a été transmise au service de validation.`, 'success');
+                
+            } catch (err) {
+                console.error("Erreur Grist AddRecord :", err);
+                alert("Erreur de communication avec Grist. Vérifiez que la table 'Reservations' existe et que l'utilisateur local actuel ait le droit d'écriture.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function openTicketModal() {
+            document.getElementById('ticket-modal').classList.remove('hidden');
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticket-modal').classList.add('hidden');
+            document.getElementById('ticket-form').reset();
+        }
+
+        async function submitTicket(event) {
+            event.preventDefault();
+            const btn = document.getElementById('ticket-submit-btn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="ph ph-spinner gap animate-spin mr-2"></i>Transmission...';
+            btn.disabled = true;
+
+            const desc = document.getElementById('ticket-desc').value;
+            const prio = document.getElementById('ticket-prio').value;
+
+            try {
+                await grist.docApi.applyUserActions([
+                    ['AddRecord', 'Guichet_Demandes', null, {
+                        Demandeur_Ref: AppState.currentUser.Nom_Complet,
+                        Canal: 'Widget',
+                        Description: desc,
+                        Statut: 'Recue',
+                        Priorite: prio
+                    }]
+                ]);
+
+                closeTicketModal();
+                showGlobalAlert('Ticket créé !', 'La Mairie a bien reçu votre demande. Un agent va l\'étudier rapidement.', 'success');
+                
+            } catch (err) {
+                console.error("Erreur Grist AddRecord (Ticket) :", err);
+                alert("Erreur de communication avec Grist. Avez-vous les bonnes colonnes dans Guichet_Demandes ?");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function resolveTicket(ticketId) {
+            // Confirmation légère avant action
+            if(!confirm("Êtes-vous sûr de vouloir marquer ce ticket comme Résolu ? La transaction sera enregistrée dans la base.")) return;
+            
+            try {
+                // Modification de l'enregistrement Grist
+                await grist.docApi.applyUserActions([
+                    ['UpdateRecord', 'Guichet_Demandes', ticketId, {
+                        Statut: 'Resolue'
+                    }]
+                ]);
+
+                // Afficher confirmation
+                showGlobalAlert('Ticket Résolu !', 'Le statut a été mis à jour dans la base avec succès.', 'success');
+                
+            } catch (err) {
+                console.error("Erreur Grist UpdateRecord :", err);
+                alert("Impossible de modifier le statut. Vérifiez que la colonne s'appelle bien 'Statut' et accepte la valeur 'Resolue'.");
+            }
+        }
+
+        // --- 3. VIEW RENDERERS ---
+
+        function renderDashboardView() {
+            const container = document.getElementById('dashboard-content');
+            if(!AppState.currentUser || !AppState.data.rdv) return;
+            
+            const isAgent = AppState.currentUser.Role === 'agent';
+            
+            if (isAgent) {
+                // Dashboard Agent (Pilotage)
+                const pendingTickets = AppState.data.guichet.filter(t => t.Statut !== 'Resolue').length;
+                const myTickets = AppState.data.guichet.filter(t => t.Agent_Traiteur === AppState.currentUser.Nom_Complet && t.Statut !== 'Resolue').length;
+                const myRdv = AppState.data.rdv.filter(r => r.Agent_Ref === AppState.currentUser.Nom_Complet).length;
+                
+                container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-mairieBlue text-2xl mr-4"><i class="ph ph-ticket"></i></div>
+                        <div><p class="text-slate-500 text-sm font-medium">Vos tickets assignés</p><h3 class="text-3xl font-bold text-slate-800">${myTickets}</h3></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-2xl mr-4"><i class="ph ph-calendar-check"></i></div>
+                        <div><p class="text-slate-500 text-sm font-medium">Vos RDVs agent</p><h3 class="text-3xl font-bold text-slate-800">${myRdv}</h3></div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
+                    <h2 class="text-2xl font-bold mb-2 relative z-10">Interface Agent de Pilotage</h2>
+                    <p class="text-slate-300 max-w-lg relative z-10">Il y a actuellement <span class="font-bold text-white">${pendingTickets} demandes globales au guichet</span> en attente de traitement. Utilisez le menu latéral pour y accéder.</p>
+                </div>`;
+            } else {
+                // Dashboard Citoyen / Association
+                const myRdv = AppState.data.rdv.filter(r => r.Demandeur_Ref === AppState.currentUser.Nom_Complet).length;
+                
+                container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-mairieBlue text-2xl mr-4"><i class="ph ph-calendar-check"></i></div>
+                        <div><p class="text-slate-500 text-sm font-medium">Vos RDV à venir</p><h3 class="text-3xl font-bold text-slate-800">${myRdv}</h3></div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-mairieBlue to-darkBlue rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
+                    <div class="absolute top-0 right-0 opacity-10 transform translate-x-10 -translate-y-10"><i class="ph-fill ph-city text-[200px]"></i></div>
+                    <h2 class="text-2xl font-bold mb-2 relative z-10">Bienvenue sur votre espace personnalisé</h2>
+                    <p class="text-blue-100 max-w-lg relative z-10">Naviguez via le menu de gauche pour réserver des salles, prendre rendez-vous avec un agent ou effectuer une démarche administrative en quelques clics.</p>
+                </div>`;
+            }
+        }
+
+        function renderSallesView() {
+            const container = document.getElementById('salles-grid');
+            if(!AppState.data.salles.length) return; // Still loading
+
+            container.innerHTML = AppState.data.salles.map(salle => `
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-mairieBlue flex items-center justify-center text-2xl group-hover:bg-mairieBlue group-hover:text-white transition-colors">
+                            <i class="ph ph-door"></i>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${salle.Est_Reservable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${salle.Est_Reservable ? 'Disponible' : 'Indisponible'}
+                        </span>
+                    </div>
+                    <h4 class="text-lg font-bold text-slate-800 mb-1">${salle.Nom_Salle}</h4>
+                    <p class="text-sm text-slate-500 mb-6 line-clamp-2"><i class="ph ph-map-pin mr-1"></i>${salle.Adresse}</p>
+                    
+                    <div class="mt-auto grid grid-cols-2 gap-4 pb-4 border-b border-slate-100 mb-4">
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">Capacité</p>
+                            <p class="text-sm font-bold text-slate-700">${salle.Capacite} pers.</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">Prix / Jour</p>
+                            <p class="text-sm font-bold text-slate-700">${salle.Prix === 0 ? 'Gratuit' : salle.Prix + ' €'}</p>
+                        </div>
+                    </div>
+                    
+                    <button onclick="openBookingModal('${salle.Nom_Salle.replace(/'/g, "\\'")}')" class="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-mairieBlue font-semibold rounded-xl text-sm transition-colors border border-slate-200" ${!salle.Est_Reservable || AppState.currentUser?.Role === 'agent' ? 'disabled opacity-50 cursor-not-allowed' : ''}>
+                        ${AppState.currentUser?.Role === 'agent' ? 'Voir l\'agenda' : 'Demander à réserver'}
+                    </button>
+                </div>
+            `).join('');
+        }
+        function renderAssosView() {
+            const tbody = document.getElementById('assos-tbody');
+            if(!AppState.data.assos || !AppState.data.assos.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Aucune association trouvée</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = AppState.data.assos.map(asso => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 font-semibold text-slate-800">${asso.Nom_Asso}</td>
+                    <td class="px-6 py-4 text-slate-600 flex items-center"><div class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center mr-2 text-xs"><i class="ph-fill ph-user"></i></div>${asso.Representant || '-'}</td>
+                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">${asso.Numero_RNA || '-'}</td>
+                    <td class="px-6 py-4"><button class="text-mairieBlue hover:underline text-sm font-medium">Consulter</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderRdvView() {
+            const container = document.getElementById('rdv-list');
+            
+            // 1. Filtrage strict (Row-Level Security)
+            let myRdv = [];
+            if(AppState.currentUser) {
+                if(AppState.currentUser.Role === 'agent') {
+                    myRdv = AppState.data.rdv.filter(r => r.Agent_Ref === AppState.currentUser.Nom_Complet);
+                } else {
+                    myRdv = AppState.data.rdv.filter(r => r.Demandeur_Ref === AppState.currentUser.Nom_Complet);
+                }
+            }
+
+            if(!myRdv || !myRdv.length) {
+                container.innerHTML = '<p class="text-slate-500 p-4 bg-white rounded-xl border border-slate-100">Aucun rendez-vous ne vous concerne actuellement.</p>';
+                return;
+            }
+
+            // Stat widget refresh
+            const statWidget = document.getElementById('dash-stat-rdv');
+            if(statWidget) statWidget.innerText = myRdv.length;
+
+            container.innerHTML = myRdv.map(rdv => {
+                const dateObj = new Date(rdv.Date_Heure);
+                const isInvalid = isNaN(dateObj.getTime());
+                return `
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between hover:border-blue-200 transition-colors">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-50 text-mairieBlue rounded-xl flex flex-col items-center justify-center mr-4">
+                            <span class="text-xs font-bold uppercase leading-none">RDV</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800">${rdv.Objet}</h4>
+                            <p class="text-sm text-slate-500">Avec <span class="font-medium text-slate-700">${rdv.Demandeur_Ref || '?'}</span> • M. ${rdv.Agent_Ref || '?'}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-sm font-semibold mb-1">
+                            <i class="ph ph-clock mr-1"></i> ${isInvalid ? String(rdv.Date_Heure) : dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit'})}
+                        </span>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderGuichetView() {
+            const container = document.getElementById('guichet-list');
+            const isAgent = AppState.currentUser.Role.toLowerCase() === 'agent';
+            
+            let displayTickets = AppState.data.guichet || [];
+            
+            // RLS pour les Citoyens et Associations
+            if (!isAgent && AppState.currentUser) {
+                displayTickets = displayTickets.filter(t => t.Demandeur_Ref === AppState.currentUser.Nom_Complet);
+            }
+            
+            let html = `
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800">${isAgent ? 'Vue Globale du Guichet' : 'Vos demandes au Guichet'}</h3>
+                        <p class="text-sm text-slate-500">${displayTickets.length} ticket(s) actif(s)</p>
+                    </div>
+                    <button onclick="openTicketModal()" class="bg-mairieBlue text-white px-4 py-2 rounded-lg font-semibold hover:bg-darkBlue transition-colors flex items-center shadow-md text-sm">
+                        <i class="ph ph-plus-circle mr-2 text-lg"></i> Nouveau Ticket
+                    </button>
+                </div>
+            `;
+
+            if(!displayTickets.length) {
+                html += '<p class="text-slate-500 p-4 bg-white rounded-xl border border-slate-100 text-center flex flex-col items-center justify-center min-h-[150px]"><i class="ph ph-check-circle text-4xl text-slate-300 mb-2"></i>Aucun ticket en cours.</p>';
+                container.innerHTML = html;
+                return;
+            }
+
+            html += displayTickets.map(ticket => {
+                const prioColor = ticket.Priorite === 'Urgente' ? 'text-red-700 bg-red-100' : (ticket.Priorite === 'Basse' ? 'text-green-700 bg-green-100' : 'text-blue-700 bg-blue-100');
+                const statIcon = ticket.Statut === 'Resolue' ? 'ph-check-circle text-green-500' : 'ph-spinner gap text-blue-500 animate-spin';
+                
+                // Highlight si c'est la tâche de l'agent connecté
+                const isMineTask = isAgent && ticket.Agent_Traiteur === AppState.currentUser.Nom_Complet;
+                const borderClass = isMineTask && ticket.Statut !== 'Resolue' ? 'border-mairieBlue ring-1 ring-mairieBlue/50 shadow-md' : 'border-slate-100 shadow-sm';
+                
+                return `
+                <div class="bg-white p-5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between transition-all ${borderClass}">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="uppercase tracking-wider font-bold text-[10px] px-2 py-0.5 rounded ${prioColor}">${ticket.Priorite || 'Normale'}</span>
+                            <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded flex items-center"><i class="ph ph-${ticket.Canal === 'Email' ? 'envelope' : (ticket.Canal === 'Widget' ? 'browser' : 'phone')} mr-1"></i> ${ticket.Canal || 'Guichet'}</span>
+                            ${isMineTask ? '<span class="text-[10px] bg-darkBlue text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">Mon ticket</span>' : ''}
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-lg">${ticket.Description}</h4>
+                        <p class="text-sm text-slate-500 mt-1">Demandeur : <span class="font-medium text-slate-700">${ticket.Demandeur_Ref}</span></p>
+                    </div>
+                    <div class="mt-4 md:mt-0 flex items-center md:flex-col md:items-end space-x-4 md:space-x-0 cursor-default">
+                        <div class="flex items-center text-slate-600 font-medium mb-1">
+                            ${isMineTask && ticket.Statut !== 'Resolue' ? 
+                                `<button onclick="resolveTicket(${ticket.id})" class="flex items-center bg-white hover:bg-green-50 text-green-600 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold border border-green-200 group shadow-sm mr-2">
+                                    <i class="ph ph-check-circle mr-1.5 text-lg group-hover:scale-110 transition-transform"></i> Marquer Résolu
+                                </button>` 
+                            : `<i class="ph ${statIcon} mr-1.5 text-lg"></i>`}
+                            <span class="${ticket.Statut === 'Resolue' ? 'text-green-600 font-semibold' : ''}">${ticket.Statut}</span>
+                        </div>
+                        ${ticket.Agent_Traiteur ? `<p class="text-xs text-slate-400">Assigné à : <span class="${isMineTask ? 'font-bold text-mairieBlue' : ''}">${ticket.Agent_Traiteur}</span></p>` : `<p class="text-xs text-amber-500">Non assigné</p>`}
+                    </div>
+                </div>
+            `}).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function renderReunionsView() {
+            const container = document.getElementById('reunions-list');
+            if(!AppState.data.reunions || !AppState.data.reunions.length) {
+                container.innerHTML = '<p class="text-slate-500 p-4">Aucune réunion transcrite.</p>';
+                return;
+            }
+
+            container.innerHTML = AppState.data.reunions.map(reu => `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">${reu.Titre}</h3>
+                            <p class="text-sm text-slate-500"><i class="ph-fill ph-calendar-blank text-mairieRed mr-1"></i> ${new Date(reu.Date).toLocaleDateString('fr-FR', {dateStyle:'full'})}</p>
+                        </div>
+                        <button class="bg-slate-100 border border-slate-200 text-slate-600 hover:bg-mairieBlue hover:border-mairieBlue hover:text-white hover:shadow-lg transition-all rounded-xl py-2 px-4 flex items-center justify-center font-semibold text-sm group">
+                            <i class="ph ph-file-pdf text-lg mr-2 text-red-500 group-hover:text-white transition-colors"></i>Exporter PDF
+                        </button>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Ordre du jour</p>
+                        <p class="text-sm text-slate-700 font-medium">${reu.Ordre_Jour}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Décisions</p>
+                        <p class="text-sm text-slate-600 italic whitespace-pre-wrap">${reu.Decisions || "En attente de transcription..."}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- 4. GRIST INTEGRATION (VRAIES DONNÉES) ---
+        
+        // Utilitaire pour transformer le format en colonnes de Grist ( {id: [1], Nom: ["A"]} ) en format liste d'objets : [{id: 1, Nom: "A"}]
+        function formatGristTable(tableData) {
+            if (!tableData || !tableData.id) return [];
+            const keys = Object.keys(tableData);
+            return tableData.id.map((id, index) => {
+                const row = {};
+                keys.forEach(k => row[k] = tableData[k][index]);
+                return row;
+            });
+        }
+
+        async function fetchRealData() {
+            try {
+                console.log("Téléchargement des données depuis Grist...");
+                
+                // On peut fetcher toutes les tables dont on a besoin en parallèle pour optimiser
+                // catch(null) permet à l'App de ne pas planter complètement si une table manque, elle sera juste vide.
+                const [rawUsers, rawSalles, rawAssos, rawRdv, rawGuichet, rawReunions] = await Promise.all([
+                    grist.docApi.fetchTable('Utilisateurs').catch(() => null),
+                    grist.docApi.fetchTable('Salles').catch(() => null),
+                    grist.docApi.fetchTable('Associations').catch(() => null),
+                    grist.docApi.fetchTable('RendezVous').catch(() => null),
+                    grist.docApi.fetchTable('Guichet_Demandes').catch(() => null),
+                    grist.docApi.fetchTable('Reunions').catch(() => null)
+                ]);
+                
+                // Formatage et injection
+                if(rawUsers) AppState.data.users = formatGristTable(rawUsers);
+                if(rawSalles) AppState.data.salles = formatGristTable(rawSalles);
+                if(rawAssos) AppState.data.assos = formatGristTable(rawAssos);
+                if(rawRdv) AppState.data.rdv = formatGristTable(rawRdv);
+                if(rawGuichet) AppState.data.guichet = formatGristTable(rawGuichet);
+                if(rawReunions) AppState.data.reunions = formatGristTable(rawReunions);
+                
+                console.log("Données chargées :", AppState.data);
+                
+                // Déclencher l'affichage de l'écran de Login une fois les données disponibles
+                renderLoginScreen();
+
+            } catch (error) {
+                console.error("Erreur historique chargement Grist :", error);
+                document.getElementById('login-status').innerHTML = `
+                    <div class="mt-6 p-4 text-center text-red-500 bg-red-50 rounded-xl border border-red-200">
+                        <i class="ph ph-warning-circle text-2xl mb-1"></i>
+                        <p class="font-bold text-sm">Problème de synchronisation Grist global</p>
+                    </div>
+                `;
+            }
+        }
+
+        function initGristConnection() {
+            // Indique à Grist que le widget est prêt et demande l'accès total
+            grist.ready({
+                requiredAccess: 'full',
+                onEditOptions() { /* Options du widget si besoin plus tard */ }
+            });
+
+            // Une fois que l'API est injectée et que le widget est autorisé par Grist, le callback docApi se lève souvent au premier onRecords ou implicitement après ready. On peut fetch directement en asynchrone sachant que prêter attention à "onRecords" est facultatif si on manipule docApi.
+            // On s'abonne aux changements internes pour la table couplée (au cas où vous liez le widget via l'UI Grist)
+            grist.onRecords((records) => {
+                console.log("Synchronisation temps réel Grist captée", records);
+            });
+
+            // On lance notre chargement initial asynchrone principal
+            fetchRealData();
+        }
+
+        // Initialize App on DOM Content Loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+    </script>
+</body>
+</html>
